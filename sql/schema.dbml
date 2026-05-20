@@ -1,0 +1,65 @@
+// Star Schema — World Happiness Predictions
+// Workshop 3 — ETL (G01) | UAO
+// Paste this at dbdiagram.io to render the diagram
+
+Table raw_happiness_events {
+  raw_event_id           integer   [pk, increment, note: 'Raw staging layer — every Kafka message lands here first']
+  received_at            timestamp
+  country                text
+  year                   integer
+  gdp                    float
+  family                 float
+  health                 float
+  freedom                float
+  generosity             float
+  corruption             float
+  actual_happiness_score float
+  raw_payload            text      [note: 'Full original JSON as received from Kafka']
+  processing_status      varchar(30) [note: 'VALID | INVALID_SCHEMA | INVALID_VALUES | PREDICTION_ERROR']
+  validation_message     text
+}
+
+Table dim_country {
+  country_id   integer [pk, increment]
+  country_name text    [unique, not null]
+  region       text
+}
+
+Table dim_date {
+  date_id integer [pk, increment]
+  year    integer [unique, not null]
+}
+
+Table dim_raw_event {
+  dim_raw_event_id       integer   [pk, increment]
+  raw_event_id           integer   [ref: - raw_happiness_events.raw_event_id, note: 'Links to original raw message']
+  country                text
+  year                   integer
+  gdp                    float
+  family                 float
+  health                 float
+  freedom                float
+  generosity             float
+  corruption             float
+  actual_happiness_score float
+  processing_status      varchar(30)
+  received_at            timestamp
+}
+
+Table fact_predictions {
+  prediction_id          integer   [pk, increment]
+  raw_event_id           integer   [ref: > raw_happiness_events.raw_event_id]
+  dim_raw_event_id       integer   [ref: > dim_raw_event.dim_raw_event_id]
+  country_id             integer   [ref: > dim_country.country_id]
+  date_id                integer   [ref: > dim_date.date_id]
+  actual_score           float
+  predicted_score        float
+  prediction_error       float     [note: 'GENERATED: ABS(actual_score - predicted_score)']
+  gdp_per_capita         float
+  social_support         float
+  health_life_expectancy float
+  freedom                float
+  generosity             float
+  corruption             float
+  prediction_timestamp   timestamp
+}
